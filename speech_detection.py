@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from math import ceil
 from scipy.io.wavfile import read
 from scipy.signal import medfilt
 from librosa import display
-from math import ceil
 
 def signal_energy(sound, window_length):
     
@@ -44,59 +44,63 @@ def spectral_centroid(sound, window_length):
     
     return result
 
-def smooth_signal(signal, bin_length):
-    
-    result = []
-    
-    bins = [signal[i:i + bin_length] for i in range(0, len(signal), bin_length)]
-    for bin in bins:
-        result.extend(np.full(bin.size, np.mean(bin)))
-    
-    result = medfilt(result, 375)
-    
+def smooth_signal(signal):
+    result = medfilt(signal, 51)
+    result = medfilt(result, 51)
     return result
 
-def maximum_values(signal):
+def max_values(signal):
     
-    max = np.zeros(2)
+    max = [0, 0]
+    hist = np.histogram(signal, bins = 'auto')
     
-    for v in signal:
-        if v > np.min(max):
-            max[np.argmin(max)] = v
+    for i in range(hist[0].size):
+        maxv = [hist[0][j] for j in max]
+        if hist[0][i] > np.min(maxv):
+            max[np.argmin(maxv)] = i
     
-    return max    
+    return [(hist[1][i] + hist[1][i + 1]) * 0.5 for i in max]
 
-def calculate_threshold(weight, max):
-    return (weight * max[0] + max[1]) / (weight + 1)
+def calculate_mask(signal, max):
+    th = (5.0 * max[0] + max[1]) / 6.0
+    return [1 if y > th else 0 for y in signal]
+
+def post_process(mask, window_length):
+    
+    bound = -1
+    for i in range(mask.size):
+        if mask[i] > 0:
+            if bound >= 0 and i - bound < 20:
+                for j in range(bound + 1, i):
+                    mask[j] = 1
+            bound = i
+            
+    res = []
+    for m in mask:
+        res.extend(np.ones(window_length) if m > 0 else np.zeros(window_length))
+        
+    return res
 
 sound = read('C:/Users/mrfal/Downloads/silenceRemoval/example.wav')
 sound = sound[1].astype(float)
 
-window_length = 50
+window_length = 500
 
 nrg = signal_energy(sound, window_length)
 spc = spectral_centroid(sound, window_length)
-nrgsm = smooth_signal(nrg, 25)
-spcsm = smooth_signal(spc, 25)
-maxnrg = maximum_values(nrg)
-maxspc = maximum_values(spc)
-tnrg = calculate_threshold(5, maxnrg)
-tspc = calculate_threshold(5, maxspc)
+nrgsm = smooth_signal(nrg)
+spcsm = smooth_signal(spc)
+maxnrg = max_values(nrg)
+maxspc = max_values(spc)
+nrgmsk = calculate_mask(nrg, maxnrg)
+spcmsk = calculate_mask(spc, maxspc)
+mask = post_process(np.multiply(nrgmsk, spcmsk), window_length)
 
-res = []
-for i in range(nrg.size):
-    res.extend(np.ones(window_length) if nrg[i] > tnrg and spc[i] > tspc else np.zeros(window_length))    
-
-print(maxnrg)
-print(maxspc)
-print(tnrg)
-print(tspc)
-
-fig, axs = plt.subplots(3, 2)
+fig, axs = plt.subplots(2, 3)
 display.waveshow(sound, ax=axs[0][0])
-axs[0][1].plot(res)
-axs[1][0].plot(nrg)
+axs[1][0].plot(mask)
+axs[0][1].plot(nrg)
 axs[1][1].plot(nrgsm)
-axs[2][0].plot(spc)
-axs[2][1].plot(spcsm)
+axs[0][2].plot(spc)
+axs[1][2].plot(spcsm)
 plt.show()
