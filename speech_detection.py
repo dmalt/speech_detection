@@ -1,9 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from math import ceil
-from scipy.io.wavfile import read
 from scipy.signal import medfilt
-from librosa import display
 
 def signal_energy(sound, window_length):
     
@@ -44,14 +41,14 @@ def spectral_centroid(sound, window_length):
     
     return result
 
-def smooth_signal(signal):
-    result = medfilt(signal, 51)
-    result = medfilt(result, 51)
+def smooth_signal(signal, window_length):
+    result = medfilt(signal, window_length)
+    result = medfilt(result, window_length)
     return result
 
-def max_values(signal):
+def max_values(signal, num_values):
     
-    max = [0, 0]
+    max = [0] * num_values
     hist = np.histogram(signal, bins = 'auto')
     
     for i in range(hist[0].size):
@@ -61,16 +58,16 @@ def max_values(signal):
     
     return [(hist[1][i] + hist[1][i + 1]) * 0.5 for i in max]
 
-def calculate_mask(signal, max):
-    th = (5.0 * max[0] + max[1]) / 6.0
+def calculate_mask(signal, max, weight):
+    th = (weight * max[0] + max[1]) / (weight + 1)
     return [1 if y > th else 0 for y in signal]
 
-def post_process(mask, window_length):
+def post_process(mask, window_length, min_dist):
     
     bound = -1
     for i in range(mask.size):
         if mask[i] > 0:
-            if bound >= 0 and i - bound < 20:
+            if bound >= 0 and (i - bound) * window_length < min_dist:
                 for j in range(bound + 1, i):
                     mask[j] = 1
             bound = i
@@ -81,26 +78,42 @@ def post_process(mask, window_length):
         
     return res
 
-sound = read('C:/Users/mrfal/Downloads/silenceRemoval/example.wav')
-sound = sound[1].astype(float)
+def detect_speech(sound, df, draw = 0):
+    
+    window_length = round(0.05 * df)
+    
+    nrg = signal_energy(sound, window_length)
+    spc = spectral_centroid(sound, window_length)
+    nrgsm = smooth_signal(nrg, 5)
+    spcsm = smooth_signal(spc, 5)
+    maxnrg = max_values(nrgsm, 2)
+    maxspc = max_values(spcsm, 2)
+    nrgmsk = calculate_mask(nrg, maxnrg, 5.0)
+    spcmsk = calculate_mask(spc, maxspc, 5.0)
+    mask = post_process(np.multiply(nrgmsk, spcmsk), window_length, round(0.5 * df))
+    mask = np.resize(mask, sound.size)
+    
+    if draw:
+        import matplotlib.pyplot as plt
+        from librosa import display
+        
+        fig, axs = plt.subplots(2, 3)
+        display.waveshow(sound, ax=axs[0][0])
+        axs[1][0].plot(mask)
+        axs[0][1].plot(nrg)
+        axs[1][1].plot(nrgsm)
+        axs[0][2].plot(spc)
+        axs[1][2].plot(spcsm)
+        plt.show()
+        
+    return mask
 
-window_length = 500
+def remove_silence(sound, df):
+    mask = detect_speech(sound, df)
+    return np.multiply(sound, mask)
 
-nrg = signal_energy(sound, window_length)
-spc = spectral_centroid(sound, window_length)
-nrgsm = smooth_signal(nrg)
-spcsm = smooth_signal(spc)
-maxnrg = max_values(nrg)
-maxspc = max_values(spc)
-nrgmsk = calculate_mask(nrg, maxnrg)
-spcmsk = calculate_mask(spc, maxspc)
-mask = post_process(np.multiply(nrgmsk, spcmsk), window_length)
+import scipy.io.wavfile as wav
 
-fig, axs = plt.subplots(2, 3)
-display.waveshow(sound, ax=axs[0][0])
-axs[1][0].plot(mask)
-axs[0][1].plot(nrg)
-axs[1][1].plot(nrgsm)
-axs[0][2].plot(spc)
-axs[1][2].plot(spcsm)
-plt.show()
+sound = wav.read('C:/Users/mrfal/Documents/neurointerfaces/speech_meg/rawdata/derivatives/081-align_audio/sub-01/sub-01_task-speech_proc-align_beh.wav')
+speech = remove_silence(sound[1].astype(float), sound[0])
+wav.write('speech.wav', sound[0], speech.astype(np.int16))
