@@ -62,25 +62,32 @@ def calculate_mask(signal, max, weight):
     th = (weight * max[0] + max[1]) / (weight + 1)
     return [1 if y > th else 0 for y in signal]
 
-def post_process(mask, window_length, min_dist):
+def post_process(mask, sound_length, window_length, extend_length):
     
-    bound = -1
+    res = [0] * sound_length
+    
+    def set(start, end):
+        start = start if start >= 0 else 0
+        end = end if end <= sound_length else sound_length
+        for i in range(start, end):
+            res[i] = 1
+    
+    pos = 0
     for i in range(mask.size):
-        if mask[i] > 0:
-            if bound >= 0 and (i - bound) * window_length < min_dist:
-                for j in range(bound + 1, i):
-                    mask[j] = 1
-            bound = i
-            
-    res = []
-    for m in mask:
-        res.extend(np.ones(window_length) if m > 0 else np.zeros(window_length))
+        next_pos = pos + window_length
+        if (mask[i] > 0):
+            set(pos, next_pos)
+        if i > 0 and mask[i] > 0 and mask[i - 1] == 0:
+            set(pos - extend_length, pos)
+        if i < mask.size and mask[i] > 0 and mask[i + 1] == 0:
+            set(next_pos + 1, next_pos + extend_length)
+        pos = next_pos
         
     return res
 
 def detect_speech(sound, df, draw = 0):
     
-    window_length = round(0.05 * df)
+    window_length = round(0.025 * df)
     
     nrg = signal_energy(sound, window_length)
     spc = spectral_centroid(sound, window_length)
@@ -90,8 +97,7 @@ def detect_speech(sound, df, draw = 0):
     maxspc = max_values(spcsm, 2)
     nrgmsk = calculate_mask(nrg, maxnrg, 5.0)
     spcmsk = calculate_mask(spc, maxspc, 5.0)
-    mask = post_process(np.multiply(nrgmsk, spcmsk), window_length, round(0.5 * df))
-    mask = np.resize(mask, sound.size)
+    mask = post_process(np.multiply(nrgmsk, spcmsk), sound.size, window_length, 5 * window_length)
     
     if draw:
         import matplotlib.pyplot as plt
@@ -111,9 +117,3 @@ def detect_speech(sound, df, draw = 0):
 def remove_silence(sound, df):
     mask = detect_speech(sound, df)
     return np.multiply(sound, mask)
-
-import scipy.io.wavfile as wav
-
-sound = wav.read('C:/Users/mrfal/Documents/neurointerfaces/speech_meg/rawdata/derivatives/081-align_audio/sub-01/sub-01_task-speech_proc-align_beh.wav')
-speech = remove_silence(sound[1].astype(float), sound[0])
-wav.write('speech.wav', sound[0], speech.astype(np.int16))
