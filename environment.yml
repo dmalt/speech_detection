@@ -1,0 +1,10 @@
+name: speech_detection
+channels:
+  - defaults
+dependencies:
+  - scipy
+  - librosa
+  - numpy
+  - python
+  - mne-base
+  - ipython
