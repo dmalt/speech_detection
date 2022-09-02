@@ -81,7 +81,7 @@ def smooth_signal(signal, window_length):
     return result
 
 
-def max_values(hist, num_values):
+def get_local_maxima(hist, num_values):
     max_args = [-1] * num_values
     bin_counts, bin_edges = hist[0], hist[1]
     bound = 0.02 * np.mean(bin_counts)
@@ -107,7 +107,7 @@ def max_values(hist, num_values):
     )
 
 
-def calculate_threshold(signal, max, weight):
+def get_weighted_average_threshold(signal, max, weight):
     if np.count_nonzero(~np.isnan(max)) < 2:
         return np.mean(signal)
     return (weight * max[0] + max[1]) / (weight + 1)
@@ -146,12 +146,12 @@ def detect_speech(sound, sr, draw=False):
     spcsm = smooth_signal(spc, sm_filter_order)
     nrghst = np.histogram(np.trim_zeros(nrgsm), "fd")
     spchst = np.histogram(np.trim_zeros(spcsm), "fd")
-    maxnrg = max_values(nrghst, 2)
-    maxspc = max_values(spchst, 2)
+    maxnrg = get_local_maxima(nrghst, 2)
+    maxspc = get_local_maxima(spchst, 2)
     if np.corrcoef(nrgsm, spcsm)[0][1] < 0:
         maxspc = np.flip(maxspc)
-    nrgth = calculate_threshold(nrgsm, maxnrg, thresholding_weight)
-    spcth = calculate_threshold(spcsm, maxspc, thresholding_weight)
+    nrgth = get_weighted_average_threshold(nrgsm, maxnrg, thresholding_weight)
+    spcth = get_weighted_average_threshold(spcsm, maxspc, thresholding_weight)
     nrgmsk = calculate_mask(nrgsm, maxnrg, nrgth)
     spcmsk = calculate_mask(spcsm, maxspc, spcth)
     mask = post_process(
