@@ -1,29 +1,35 @@
 import numpy as np
+import numpy.typing as npt
 
 from .features import energy, spectral_spread
 from .thresholding import get_local_maxima, get_weighted_average_threshold
 from .transforms import smooth
+
+Mask = npt.NDArray[np.bool_]  # of shape(n_samp,)
 
 
 def calculate_mask(signal, max, th):
     return signal > th if max[0] <= max[1] else signal < th
 
 
-def post_process(mask, sound_length, window_length, extend_length):
-    res = np.zeros(sound_length).astype(bool)
+def post_process(lr_mask: Mask, sound_length: int, window_length: int, extend_length: int) -> Mask:
+    hr_mask = np.zeros(sound_length).astype(bool)
 
-    pos = 0
-    for i in range(len(mask)):
-        next_pos = pos + window_length
-        if mask[i]:
-            res[pos:next_pos] = True
-        if i > 0 and mask[i] and not mask[i - 1]:
-            res[max(pos - extend_length, 0) : pos] = True
-        if i < (len(mask) - 1) and mask[i] and not mask[i + 1]:
-            res[next_pos : next_pos + extend_length] = True
-        pos = next_pos
+    hr_pos = 0
+    for i in range(len(lr_mask)):
+        next_hr_pos = hr_pos + window_length
+        is_on_left_bound = i > 0 and lr_mask[i] and not lr_mask[i - 1]
+        is_on_right_bound = i < (len(lr_mask) - 1) and lr_mask[i] and not lr_mask[i + 1]
 
-    return res
+        if lr_mask[i]:
+            hr_mask[hr_pos:next_hr_pos] = True
+        if is_on_left_bound:
+            hr_mask[max(hr_pos - extend_length, 0) : hr_pos] = True
+        if is_on_right_bound:
+            hr_mask[next_hr_pos : next_hr_pos + extend_length] = True
+        hr_pos = next_hr_pos
+
+    return hr_mask
 
 
 def detect_speech(sound, sr, draw=False):
