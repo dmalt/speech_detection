@@ -1,4 +1,5 @@
 .vscode/
 test.py
 *.wav
+*.egg-info
 __pycache__
