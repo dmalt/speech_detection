@@ -1,8 +1,7 @@
-from functools import cmp_to_key
 from math import ceil, sqrt
 
 import numpy as np
-from scipy.signal import butter, lfilter, medfilt
+from scipy.signal import medfilt
 
 
 def normalize(sound: np.ndarray) -> np.ndarray:
