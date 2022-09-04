@@ -1,6 +1,6 @@
 name: speech_detection
 channels:
-  - defaults
+  - conda-forge
 dependencies:
   - scipy
   - librosa
