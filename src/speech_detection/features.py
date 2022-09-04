@@ -1,71 +1,39 @@
-from math import ceil, sqrt
+from math import sqrt
 
 import numpy as np
 
 from .transforms import normalize
 
 
-def energy(sound, window_length: int):
-    assert window_length > 0, "Window length must be positive integer"
-    sound = normalize(sound)
-
-    num_frames = ceil(len(sound) / window_length)
-    result = np.empty(num_frames)
-    lo, hi = 0, window_length
-    for i in range(num_frames):
-        result[i] = np.square(sound[lo:hi]).mean()
-        lo += window_length
-        hi += window_length
-
-    return result
+def energy(signal: np.ndarray) -> float:
+    return np.square(signal).mean()
 
 
-def spectral_centroid(sound, window_length: int):
-    assert window_length > 0, "Window length must be positive integer"
-    num_frames = ceil(len(sound) / window_length)
-    result = np.empty(num_frames)
+def _amplitude_spectrum(signal: np.ndarray, threshold: float) -> np.ndarray:
+    signal = np.multiply(signal, np.hamming(len(signal)))
 
-    lo, hi = 0, window_length
-    for i in range(num_frames):
-        window = sound[lo:hi]
-        window = np.multiply(window, np.hamming(len(window)))
-
-        fft = np.abs(np.fft.rfft(window))
-        fft = np.multiply(fft, fft >= 0.002 * window_length)
-        fft = normalize(fft)
-
-        freq_sum = sum((j + 1) * f for j, f in enumerate(fft))
-        fft_sum = np.sum(fft)
-        result[i] = freq_sum / fft_sum if fft_sum else 0
-
-        lo += window_length
-        hi += window_length
-
-    return result
+    fft = np.abs(np.fft.rfft(signal))
+    fft = np.multiply(fft, fft >= threshold * len(signal))
+    return normalize(fft)
 
 
-def spectral_spread(sound, window_length: int):
-    assert window_length > 0, "Window length must be positive integer"
-    num_frames = ceil(len(sound) / window_length)
-    result = np.empty(num_frames)
+def _centroid(x: np.ndarray) -> float:
+    return np.arange(1, len(x) + 1).dot(x) / np.sum(x) if np.sum(x) else 0
 
-    lo, hi = 0, window_length
-    for i in range(num_frames):
-        window = sound[lo:hi]
-        window = np.multiply(window, np.hamming(len(window)))
 
-        fft = np.abs(np.fft.rfft(window))
-        fft = np.multiply(fft, fft >= 0.002 * window_length)
-        fft = normalize(fft)
+def _spread(x: np.ndarray) -> float:
+    c = _centroid(x)
+    x_sum = np.sum(x)
+    square_dev = (np.arange(1, len(x) + 1) - c) ** 2
+    s = square_dev.dot(x)
+    return sqrt(s / x_sum) if x_sum else 0
 
-        freq_sum = sum((f + 1) * s for f, s in enumerate(fft))
-        fft_sum = np.sum(fft)
-        centroid = freq_sum / fft_sum if fft_sum else 0
 
-        freq_sum = sum((f + 1 - centroid) * (f + 1 - centroid) * s for f, s in enumerate(fft))
-        result[i] = sqrt(freq_sum / fft_sum if fft_sum else 0)
+def spectral_centroid(signal: np.ndarray, threshold: float = 0.002) -> float:
+    fft = _amplitude_spectrum(signal, threshold)
+    return _centroid(fft)
 
-        lo += window_length
-        hi += window_length
 
-    return result
+def spectral_spread(signal: np.ndarray, threshold: float = 0.002) -> float:
+    fft = _amplitude_spectrum(signal, threshold)
+    return _spread(fft)
