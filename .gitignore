@@ -3,3 +3,4 @@ test.py
 *.wav
 *.egg-info
 __pycache__
+.hypothesis
