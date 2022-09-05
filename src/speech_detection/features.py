@@ -5,7 +5,7 @@ import numpy as np
 from .transforms import normalize
 
 
-def energy(signal: np.ndarray) -> float:
+def compute_energy(signal: np.ndarray) -> float:
     return np.square(signal).mean()
 
 
@@ -29,11 +29,11 @@ def _spread(x: np.ndarray) -> float:
     return sqrt(s / x_sum) if x_sum else 0
 
 
-def spectral_centroid(signal: np.ndarray, threshold: float = 0.002) -> float:
+def compute_spectral_centroid(signal: np.ndarray, threshold: float = 0.002) -> float:
     fft = _amplitude_spectrum(signal, threshold)
     return _centroid(fft)
 
 
-def spectral_spread(signal: np.ndarray, threshold: float = 0.002) -> float:
+def compute_spectral_spread(signal: np.ndarray, threshold: float = 0.002) -> float:
     fft = _amplitude_spectrum(signal, threshold)
     return _spread(fft)
