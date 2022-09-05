@@ -81,6 +81,11 @@ def test_spread_on_empty_input_returns_zero() -> None:
     assert features._spread(np.array([])) == 0
 
 
+@given(integers(1, 1000))
+def test_spread_on_array_of_zeroes_returns_zero(n: int) -> None:
+    assert features._spread(np.array([0] * n)) == 0
+
+
 def test_spread_on_negative_inputs_raises_bad_array_exception() -> None:
     with pytest.raises(features.BadArrayException):
         features._spread(np.array([-1, -1]))
