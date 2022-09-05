@@ -61,3 +61,10 @@ def test_centroid_on_negative_inputs_raises_bad_array_exception():
 @given(arrays(float, 100, elements=floats(-1e12, 1e12)))
 def test_amplitude_spectrum_returns_nonnegative_values(x: np.ndarray):
     assert np.all(features._amplitude_spectrum(x, 10) >= 0)
+
+
+@given(arrays(float, 100, elements=floats(-1e12, 1e12)), floats(0, 1e3))
+def test_amplitude_spectrum_is_normalized(x: np.ndarray, threshold: float):
+    res = features._amplitude_spectrum(x, threshold)
+    if np.any(res):
+        assert np.max(res) == 1
