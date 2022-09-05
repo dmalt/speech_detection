@@ -14,7 +14,7 @@ def test_energy_on_empty_input_returns_zero() -> None:
 
 @given(floats(min_value=-1e12, max_value=1e12))
 def test_energy_on_single_value_returns_this_value_squared(val: float) -> None:
-    assert features.compute_energy(np.array([val])) == val**2
+    assert_almost_equal(features.compute_energy(np.array([val])), val**2)
 
 
 @given(floats(min_value=-1e6, max_value=1e6), integers(min_value=1, max_value=1_000_000))
