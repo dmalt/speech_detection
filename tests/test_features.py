@@ -25,3 +25,7 @@ def test_energy_on_arithmetic_progression_satisfies_closed_form_solution(n: int)
     assert_almost_equal(
         features.compute_energy(np.arange(1, n + 1)), (n + 1) * (2 * n + 1) / 6, decimal=3
     )
+
+
+def test_centroid_on_empty_sequence_returns_zero():
+    assert features._centroid(np.array([])) == 0
