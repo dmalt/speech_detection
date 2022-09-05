@@ -76,3 +76,7 @@ def test_amplitude_spectrum_returns_zeros_for_high_threshold(x: np.ndarray):
     res = features._amplitude_spectrum(x, threshold)
     assert np.all(res == 0)
 
+
+def test_spread_on_empty_input_returns_zero():
+    assert features._spread(np.array([])) == 0
+
