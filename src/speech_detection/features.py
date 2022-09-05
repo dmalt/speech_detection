@@ -18,7 +18,7 @@ def _amplitude_spectrum(signal: np.ndarray, threshold: float) -> np.ndarray:
 
 
 def _centroid(x: np.ndarray) -> float:
-    return np.arange(1, len(x) + 1).dot(x) / np.sum(x) if np.sum(x) else 0
+    return np.arange(len(x)).dot(x) / np.sum(x) if np.sum(x) else 0
 
 
 def _spread(x: np.ndarray) -> float:
