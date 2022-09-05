@@ -3,7 +3,8 @@ import numpy.typing as npt
 
 from .features import energy, spectral_spread
 from .thresholding import get_local_maxima, get_weighted_average_threshold
-from .transforms import smooth
+from .transforms import normalize, smooth
+from .windowing import compute_windowed_feature
 
 Mask = npt.NDArray[np.bool_]  # of shape(n_samp,)
 
@@ -38,8 +39,8 @@ def detect_speech(sound, sr, draw=False):
     thresholding_weight = 5.0
     sm_filter_order = 5
 
-    nrg = energy(sound, window_length)
-    spc = spectral_spread(sound, window_length)
+    nrg = compute_windowed_feature(normalize(sound), window_length, energy)
+    spc = compute_windowed_feature(sound, window_length, spectral_spread)
     nrgsm = smooth(nrg, sm_filter_order)
     spcsm = smooth(spc, sm_filter_order)
     nrghst = np.histogram(np.trim_zeros(nrgsm), "fd")
