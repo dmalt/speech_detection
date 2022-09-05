@@ -32,7 +32,7 @@ def test_centroid_on_empty_sequence_returns_zero():
     assert features._centroid(np.array([])) == 0
 
 
-@given(floats(min_value=-1e6, max_value=1e6), integers(min_value=1, max_value=1_000_000))
+@given(floats(min_value=1e-6, max_value=1e6), integers(min_value=1, max_value=1_000_000))
 def test_centroid_on_equal_values_returns_middle(val: float, n: int):
     res = features._centroid(np.array([val] * n))
     if val == 0:
@@ -45,8 +45,8 @@ def test_centroid_on_equal_values_returns_middle(val: float, n: int):
 def test_centroid_on_triangular_input_returns_peak_index(peak_val: float, n_over_2: int):
     test_array = np.concatenate(
         [
-            np.linspace(-peak_val - 1, peak_val, num=n_over_2, endpoint=False),
-            np.linspace(peak_val, -peak_val - 1, n_over_2 + 1),
+            np.linspace(0, peak_val, num=n_over_2, endpoint=False),
+            np.linspace(peak_val, 0, n_over_2 + 1),
         ]
     )
     assert_almost_equal(features._centroid(test_array), n_over_2, decimal=3)
