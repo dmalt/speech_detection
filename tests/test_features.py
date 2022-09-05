@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from hypothesis import given
 from hypothesis.strategies import floats, integers
 from numpy.testing import assert_almost_equal
@@ -40,6 +41,18 @@ def test_centroid_on_equal_values_returns_middle(val: float, n: int):
         assert_almost_equal(res, (n - 1) / 2, decimal=3)
 
 
-def test_centroid_on_triangular_input_returns_peak_0_based_index():
-    test_array = np.array(list(range(10)) + list(range(10, -1, -1)))
-    assert features._centroid(test_array) == 10
+@given(floats(min_value=1e-12, max_value=1e12), integers(min_value=1, max_value=100_000))
+def test_centroid_on_triangular_input_returns_peak_index(peak_val: float, n_over_2: int):
+    test_array = np.concatenate(
+        [
+            np.linspace(-peak_val - 1, peak_val, num=n_over_2, endpoint=False),
+            np.linspace(peak_val, -peak_val - 1, n_over_2 + 1),
+        ]
+    )
+    assert_almost_equal(features._centroid(test_array), n_over_2, decimal=3)
+
+
+def test_centroid_on_negative_inputs_raises_bad_array_exception():
+    with pytest.raises(features.BadArrayException):
+        features._centroid(np.array([-1, -1]))
+

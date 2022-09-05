@@ -5,6 +5,10 @@ import numpy as np
 from .transforms import normalize
 
 
+class BadArrayException(Exception):
+    pass
+
+
 def compute_energy(signal: np.ndarray) -> float:
     return np.square(signal).mean() if len(signal) else 0
 
