@@ -29,3 +29,12 @@ def test_energy_on_arithmetic_progression_satisfies_closed_form_solution(n: int)
 
 def test_centroid_on_empty_sequence_returns_zero():
     assert features._centroid(np.array([])) == 0
+
+
+@given(floats(min_value=-1e6, max_value=1e6), integers(min_value=1, max_value=1_000_000))
+def test_centroid_on_equal_values_returns_middle(val: float, n: int):
+    res = features._centroid(np.array([val] * n))
+    if val == 0:
+        assert res == 0
+    else:
+        assert_almost_equal(res, (n + 1) / 2, decimal=3)
