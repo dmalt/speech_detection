@@ -38,3 +38,8 @@ def test_centroid_on_equal_values_returns_middle(val: float, n: int):
         assert res == 0
     else:
         assert_almost_equal(res, (n + 1) / 2, decimal=3)
+
+
+def test_centroid_on_triangular_input_returns_peak_1_based_index():
+    test_array = np.array(list(range(10)) + list(range(10, -1, -1)))
+    assert features._centroid(test_array) == 11
