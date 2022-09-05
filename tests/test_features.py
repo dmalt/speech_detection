@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from hypothesis import given
+from hypothesis.extra.numpy import arrays
 from hypothesis.strategies import floats, integers
 from numpy.testing import assert_almost_equal
 
@@ -56,3 +57,7 @@ def test_centroid_on_negative_inputs_raises_bad_array_exception():
     with pytest.raises(features.BadArrayException):
         features._centroid(np.array([-1, -1]))
 
+
+@given(arrays(float, 100, elements=floats(-1e12, 1e12)))
+def test_amplitude_spectrum_returns_nonnegative_values(x: np.ndarray):
+    assert np.all(features._amplitude_spectrum(x, 10) >= 0)
