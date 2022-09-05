@@ -20,3 +20,8 @@ def test_compute_windowed_feature_returns_array_of_proper_length(
     res = windowing.compute_windowed_feature(np.ones(array_length), window_length, lambda _: 1)
 
     assert len(res) == ceil(array_length / window_length)
+
+
+def test_compute_windowed_feature_applies_feature_func():
+    res = windowing.compute_windowed_feature(np.zeros(100), 15, lambda _: 1)
+    assert np.all(res == 1)
