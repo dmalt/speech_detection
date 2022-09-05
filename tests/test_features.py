@@ -17,4 +17,11 @@ def test_energy_on_single_value_returns_this_value_squared(val: float) -> None:
 
 @given(floats(min_value=-1e6, max_value=1e6), integers(min_value=1, max_value=1_000_000))
 def test_energy_on_repeated_value_returns_this_value_squared(val: float, n: int) -> None:
-    assert_almost_equal(features.compute_energy(np.array([val] * n)), val ** 2, decimal=0)
+    assert_almost_equal(features.compute_energy(np.array([val] * n)), val**2, decimal=0)
+
+
+@given(integers(min_value=1, max_value=1_000_000))
+def test_energy_on_arithmetic_progression_satisfies_closed_form_solution(n: int) -> None:
+    assert_almost_equal(
+        features.compute_energy(np.arange(1, n + 1)), (n + 1) * (2 * n + 1) / 6, decimal=3
+    )
