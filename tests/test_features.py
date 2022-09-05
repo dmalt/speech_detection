@@ -86,4 +86,8 @@ def test_spread_on_negative_inputs_raises_bad_array_exception() -> None:
         features._spread(np.array([-1, -1]))
 
 
-
+@given(floats(1e-6, 1e6), integers(1, 1000))
+def test_spread_of_uniform_distribution_agrees_with_closed_form_solution(
+    val: float, n: int
+) -> None:
+    assert_almost_equal(features._spread(np.array([val] * n)), np.sqrt((n ** 2 - 1) / 12))
