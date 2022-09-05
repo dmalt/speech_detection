@@ -6,7 +6,7 @@ from .transforms import normalize
 
 
 def compute_energy(signal: np.ndarray) -> float:
-    return np.square(signal).mean()
+    return np.square(signal).mean() if len(signal) else 0
 
 
 def _amplitude_spectrum(signal: np.ndarray, threshold: float) -> np.ndarray:
