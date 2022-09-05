@@ -22,6 +22,8 @@ def _amplitude_spectrum(signal: np.ndarray, threshold: float) -> np.ndarray:
 
 
 def _centroid(x: np.ndarray) -> float:
+    if np.any(x < 0):
+        raise BadArrayException("All weights for centroid must be nonnegative")
     return np.arange(len(x)).dot(x) / np.sum(x) if np.sum(x) else 0
 
 
