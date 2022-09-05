@@ -28,6 +28,8 @@ def _centroid(x: np.ndarray) -> float:
 
 
 def _spread(x: np.ndarray) -> float:
+    if np.any(x < 0):
+        raise BadArrayException("All weights for centroid must be nonnegative")
     c = _centroid(x)
     x_sum = np.sum(x)
     square_dev = (np.arange(1, len(x) + 1) - c) ** 2

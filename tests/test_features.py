@@ -80,3 +80,7 @@ def test_amplitude_spectrum_returns_zeros_for_high_threshold(x: np.ndarray):
 def test_spread_on_empty_input_returns_zero():
     assert features._spread(np.array([])) == 0
 
+
+def test_spread_on_negative_inputs_raises_bad_array_exception():
+    with pytest.raises(features.BadArrayException):
+        features._spread(np.array([-1, -1]))
