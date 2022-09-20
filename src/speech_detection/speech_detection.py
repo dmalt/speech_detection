@@ -1,17 +1,13 @@
 import numpy as np
 import numpy.typing as npt
+from sklearn.model_selection import cross_val_score
 
-from .features import compute_energy, compute_spectral_spread
-from .thresholding import get_local_maxima, get_weighted_average_threshold
+from .features import compute_energy, compute_spectral_spread, compute_windowed_mask
 from .transforms import normalize, smooth
 from .windowing import compute_windowed_feature
+from .classification import thresholding
 
 Mask = npt.NDArray[np.bool_]  # of shape(n_samp,)
-
-
-def calculate_mask(signal, max, th):
-    return signal > th if max[0] <= max[1] else signal < th
-
 
 def post_process(lr_mask: Mask, sound_length: int, window_length: int, extend_length: int) -> Mask:
     hr_mask = np.zeros(sound_length).astype(bool)
@@ -32,51 +28,77 @@ def post_process(lr_mask: Mask, sound_length: int, window_length: int, extend_le
 
     return hr_mask
 
-
-def detect_speech(sound, sr, draw=False):
-    assert sr > 0, "Sample rate must be positive integer"
-    window_length = round(0.05 * sr)
-    thresholding_weight = 5.0
-    sm_filter_order = 5
-
-    nrg = compute_windowed_feature(normalize(sound), window_length, compute_energy)
+def compute_features(sound, window_length, sm_filter_order):
+    sound = normalize(sound)
+    nrg = compute_windowed_feature(sound, window_length, compute_energy)
     spc = compute_windowed_feature(sound, window_length, compute_spectral_spread)
     nrgsm = smooth(nrg, sm_filter_order)
     spcsm = smooth(spc, sm_filter_order)
-    nrghst = np.histogram(np.trim_zeros(nrgsm), "fd")
-    spchst = np.histogram(np.trim_zeros(spcsm), "fd")
-    maxnrg = get_local_maxima(nrghst, 2)
-    maxspc = get_local_maxima(spchst, 2)
-    if np.corrcoef(nrgsm, spcsm)[0][1] < 0:
-        maxspc = np.flip(maxspc)
-    nrgth = get_weighted_average_threshold(nrgsm, maxnrg, thresholding_weight)
-    spcth = get_weighted_average_threshold(spcsm, maxspc, thresholding_weight)
-    nrgmsk = calculate_mask(nrgsm, maxnrg, nrgth)
-    spcmsk = calculate_mask(spcsm, maxspc, spcth)
-    mask = post_process(
-        np.logical_and(nrgmsk, spcmsk), len(sound), window_length, 5 * window_length
-    )
+    return np.array([nrgsm, spcsm])
 
-    print(maxnrg)
-    print(nrgth)
-    print(maxspc)
-    print(spcth)
+def calculate_window_length(sr):
+    return round(0.05 * sr)
+
+def train_model(data, model):
+    
+    features = np.array([])
+    
+    for sound, sr, mask in data:
+        assert sr > 0, "Sample rate must be positive integer"
+        window_length = calculate_window_length(sr)
+        sm_filter_order = 5
+        
+        fs = compute_features(sound, window_length, sm_filter_order)
+        fs = np.vstack([fs, compute_windowed_feature(mask, window_length, compute_windowed_mask)])
+        features.shape = (len(features), fs.shape[0])
+        features = np.vstack([features, fs.T])
+    
+    np.random.shuffle(features)
+    
+    model = model.fit(features[:, 0:-1], features[:, -1])
+    
+    score = cross_val_score(model, features[:, 0:-1], features[:, -1], scoring="f1", cv=10)
+    print(f"Model f1 score {score}")
+    
+    return model
+
+def detect_speech(sound, sr, model=None, draw=False):
+    assert sr > 0, "Sample rate must be positive integer"
+    window_length = calculate_window_length(sr)
+    thresholding_weight = 5.0
+    sm_filter_order = 5
+    
+    features = compute_features(sound, window_length, sm_filter_order)
+    
+    mask = []
+    statistics = None
+    
+    if model:
+        mask = model.predict(features.T)
+    else:
+        mask, statistics = thresholding(features, thresholding_weight)
+    
+    mask = post_process(mask, len(sound), window_length, 5 * window_length)
 
     if draw:
         import matplotlib.pyplot as plt
 
         fig, axs = plt.subplots(2, 3)
+        
         axs[0][0].plot(sound, linewidth=0.5)
         axs[0][0].plot(np.multiply(sound, mask), linewidth=0.5)
         axs[1][0].plot(mask)
-        axs[0][1].plot(nrg, linewidth=0.5, zorder=1)
-        axs[0][1].plot(nrgsm, linewidth=0.5, zorder=2)
-        axs[0][1].plot([0, len(nrg)], [nrgth, nrgth], linewidth=0.7, zorder=3)
-        axs[1][1].plot(spc, linewidth=0.5, zorder=1)
-        axs[1][1].plot(spcsm, linewidth=0.5, zorder=2)
-        axs[1][1].plot([0, len(spc)], [spcth, spcth], linewidth=0.7, zorder=3)
-        axs[0][2].bar(nrghst[1][:-1], nrghst[0], width=np.diff(nrghst[1]))
-        axs[1][2].bar(spchst[1][:-1], spchst[0], width=np.diff(spchst[1]))
+        
+        if (statistics):
+            ths = statistics['th']
+            hists = statistics['hist']
+            axs[0][1].plot(features[0], linewidth=0.5, zorder=1)
+            axs[0][1].plot([0, len(features[0])], [ths[0], ths[0]], linewidth=0.7, zorder=3)
+            axs[1][1].plot(features[1], linewidth=0.5, zorder=1)
+            axs[1][1].plot([0, len(features[1])], [ths[1], ths[1]], linewidth=0.7, zorder=3)
+            axs[0][2].bar(hists[0][1][:-1], hists[0][0], width=np.diff(hists[0][1]))
+            axs[1][2].bar(hists[1][1][:-1], hists[1][0], width=np.diff(hists[1][1]))
+        
         plt.show()
 
     return mask

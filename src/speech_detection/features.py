@@ -45,3 +45,6 @@ def compute_spectral_centroid(signal: np.ndarray, threshold: float = 0.002) -> f
 def compute_spectral_spread(signal: np.ndarray, threshold: float = 0.002) -> float:
     fft = _amplitude_spectrum(signal, threshold)
     return _spread(fft)
+
+def compute_windowed_mask(window) -> bool:
+    return np.count_nonzero(window) > int(0.5 * len(window))
